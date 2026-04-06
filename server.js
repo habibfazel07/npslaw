@@ -13,6 +13,7 @@ app.use((req, res, next) => {
 });
 
 const APOLLO_KEY = process.env.APOLLO_API_KEY;
+const CH_KEY = process.env.CH_API_KEY;
 
 app.post('/apollo/search', async (req, res) => {
   try {
@@ -22,7 +23,7 @@ app.post('/apollo/search', async (req, res) => {
       body: JSON.stringify(req.body)
     });
     const data = await r.json();
-    if (!r.ok) console.error('Apollo search error:', r.status, JSON.stringify(data));
+    if (!r.ok) console.error('Apollo search error:', r.status, JSON.stringify(data).substring(0,200));
     res.json(data);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -35,7 +36,7 @@ app.post('/apollo/enrich', async (req, res) => {
       body: JSON.stringify({ ...req.body, reveal_personal_emails: true, reveal_phone_number: true })
     });
     const data = await r.json();
-    if (!r.ok) console.error('Apollo enrich error:', r.status, JSON.stringify(data));
+    if (!r.ok) console.error('Apollo enrich error:', r.status, JSON.stringify(data).substring(0,200));
     res.json(data);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -48,10 +49,40 @@ app.post('/apollo/org-search', async (req, res) => {
       body: JSON.stringify(req.body)
     });
     const data = await r.json();
+    console.log('Org search result:', JSON.stringify(data).substring(0, 300));
     res.json(data);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.get('/health', (req, res) => res.json({ status: 'ok', key: APOLLO_KEY ? 'set' : 'missing' }));
+app.get('/ch/search', async (req, res) => {
+  try {
+    const q = req.query.q;
+    const key = CH_KEY || req.headers['x-ch-key'];
+    if (!key) return res.status(400).json({ error: 'No Companies House API key' });
+    const r = await fetch(`https://api.company-information.service.gov.uk/search/companies?q=${encodeURIComponent(q)}&items_per_page=5`, {
+      headers: { 'Authorization': 'Basic ' + Buffer.from(key + ':').toString('base64') }
+    });
+    const data = await r.json();
+    res.json(data);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
 
-app.listen(process.env.PORT || 3000, () => console.log('NPS Apollo proxy running'));
+app.get('/ch/officers/:companyNumber', async (req, res) => {
+  try {
+    const key = CH_KEY || req.headers['x-ch-key'];
+    if (!key) return res.status(400).json({ error: 'No Companies House API key' });
+    const r = await fetch(`https://api.company-information.service.gov.uk/company/${req.params.companyNumber}/officers?items_per_page=10`, {
+      headers: { 'Authorization': 'Basic ' + Buffer.from(key + ':').toString('base64') }
+    });
+    const data = await r.json();
+    res.json(data);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/health', (req, res) => res.json({ 
+  status: 'ok', 
+  apollo: APOLLO_KEY ? 'set' : 'missing',
+  ch: CH_KEY ? 'set' : 'missing'
+}));
+
+app.listen(process.env.PORT || 3000, () => console.log('NPS proxy running'));
