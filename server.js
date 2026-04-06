@@ -17,13 +17,14 @@ const CH_KEY = process.env.CH_API_KEY;
 
 app.post('/apollo/search', async (req, res) => {
   try {
-    const r = await fetch('https://api.apollo.io/api/v1/mixed_people/search', {
+    const r = await fetch('https://api.apollo.io/api/v1/mixed_people/api_search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Api-Key': APOLLO_KEY, 'Cache-Control': 'no-cache' },
       body: JSON.stringify(req.body)
     });
     const data = await r.json();
-    if (!r.ok) console.error('Apollo search error:', r.status, JSON.stringify(data).substring(0,200));
+    if (!r.ok) console.error('Apollo search error:', r.status, JSON.stringify(data).substring(0,300));
+    else console.log('Apollo search ok, people:', (data.people||[]).length);
     res.json(data);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -36,7 +37,8 @@ app.post('/apollo/enrich', async (req, res) => {
       body: JSON.stringify({ ...req.body, reveal_personal_emails: true, reveal_phone_number: true })
     });
     const data = await r.json();
-    if (!r.ok) console.error('Apollo enrich error:', r.status, JSON.stringify(data).substring(0,200));
+    if (!r.ok) console.error('Apollo enrich error:', r.status, JSON.stringify(data).substring(0,300));
+    else console.log('Apollo enrich ok, matches:', (data.matches||data.people||[]).length);
     res.json(data);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -49,7 +51,7 @@ app.post('/apollo/org-search', async (req, res) => {
       body: JSON.stringify(req.body)
     });
     const data = await r.json();
-    console.log('Org search result:', JSON.stringify(data).substring(0, 300));
+    console.log('Org search:', r.status, JSON.stringify(data).substring(0, 300));
     res.json(data);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
