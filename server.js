@@ -31,14 +31,16 @@ app.post('/apollo/search', async (req, res) => {
 
 app.post('/apollo/enrich', async (req, res) => {
   try {
+    const body = { ...req.body, reveal_personal_emails: true };
+    delete body.reveal_phone_number;
     const r = await fetch('https://api.apollo.io/api/v1/people/bulk_match', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Api-Key': APOLLO_KEY, 'Cache-Control': 'no-cache' },
-      body: JSON.stringify({ ...req.body, reveal_personal_emails: true, reveal_phone_number: true })
+      body: JSON.stringify(body)
     });
     const data = await r.json();
     if (!r.ok) console.error('Apollo enrich error:', r.status, JSON.stringify(data).substring(0,300));
-    else console.log('Apollo enrich ok, matches:', (data.matches||data.people||[]).length);
+    else console.log('Apollo enrich ok, matches:', (data.matches||data.people||[]).length, 'sample:', JSON.stringify((data.matches||data.people||[])[0]).substring(0,200));
     res.json(data);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
