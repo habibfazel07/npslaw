@@ -31,17 +31,27 @@ app.post('/apollo/search', async (req, res) => {
 
 app.post('/apollo/enrich', async (req, res) => {
   try {
-    const body = { ...req.body, reveal_personal_emails: true };
-    delete body.reveal_phone_number;
-    const r = await fetch('https://api.apollo.io/api/v1/people/bulk_match', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Api-Key': APOLLO_KEY, 'Cache-Control': 'no-cache' },
-      body: JSON.stringify(body)
-    });
-    const data = await r.json();
-    if (!r.ok) console.error('Apollo enrich error:', r.status, JSON.stringify(data).substring(0,300));
-    else console.log('Apollo enrich ok, matches:', (data.matches||data.people||[]).length, 'sample:', JSON.stringify((data.matches||data.people||[])[0]).substring(0,200));
-    res.json(data);
+    const details = req.body.details || [];
+    const results = [];
+    for (const person of details.slice(0, 5)) {
+      try {
+        const r = await fetch('https://api.apollo.io/api/v1/people/match', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Api-Key': APOLLO_KEY, 'Cache-Control': 'no-cache' },
+          body: JSON.stringify({ id: person.id, reveal_personal_emails: true, reveal_phone_number: true })
+        });
+        const data = await r.json();
+        if (r.ok && data.person) {
+          console.log('Person match:', data.person.name, 'email:', data.person.email, 'phone:', data.person.sanitized_phone);
+          results.push(data.person);
+        } else {
+          console.log('Person match failed:', r.status, JSON.stringify(data).substring(0,150));
+        }
+      } catch(e) { console.warn('Person match error:', e.message); }
+      await new Promise(r => setTimeout(r, 200));
+    }
+    console.log(`Enrich complete: ${results.length} enriched`);
+    res.json({ matches: results, people: results });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -83,10 +93,6 @@ app.get('/ch/officers/:companyNumber', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.get('/health', (req, res) => res.json({ 
-  status: 'ok', 
-  apollo: APOLLO_KEY ? 'set' : 'missing',
-  ch: CH_KEY ? 'set' : 'missing'
-}));
+app.get('/health', (req, res) => res.json({ status: 'ok', apollo: APOLLO_KEY ? 'set' : 'missing', ch: CH_KEY ? 'set' : 'missing' }));
 
 app.listen(process.env.PORT || 3000, () => console.log('NPS proxy running'));
