@@ -94,23 +94,21 @@ app.post('/claude', async (req, res) => {
 
 app.get('/gassafe/search', async (req, res) => {
   try {
-    const postcode = (req.query.postcode || '').trim();
-    const distance = req.query.distance || '10';
-    if (!postcode) return res.status(400).json({ error: 'No postcode provided' });
-    const url = `https://api.gassafe.co.uk/api/v1/engineers/search?postcode=${encodeURIComponent(postcode)}&distance=${distance}&workType=gas&pageSize=20&pageNumber=1`;
+    const location = (req.query.postcode || '').trim();
+    if (!location) return res.status(400).json({ error: 'No location provided' });
+    const url = `https://www.checkatrade.com/api/v1/search/trades?location=${encodeURIComponent(location)}&trade=gas-engineer&radius=10&page=1&pageSize=20`;
     const r = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': 'application/json',
-        'Origin': 'https://www.gassafe.co.uk',
-        'Referer': 'https://www.gassafe.co.uk/'
+        'Accept': 'application/json, text/plain, */*',
+        'Referer': 'https://www.checkatrade.com/'
       }
     });
-    const data = await r.json();
-    console.log('Gas Safe API status:', r.status, 'result:', JSON.stringify(data).substring(0,300));
-    res.json(data);
+    const text = await r.text();
+    console.log('Checkatrade status:', r.status, 'response:', text.substring(0,500));
+    try { res.json(JSON.parse(text)); } catch(e) { res.json({ raw: text.substring(0,2000), status: r.status }); }
   } catch(e) {
-    console.error('Gas Safe API error:', e.message);
+    console.error('Search error:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
