@@ -96,11 +96,12 @@ app.get('/gassafe/search', async (req, res) => {
   try {
     const location = (req.query.postcode || '').trim();
     if (!location) return res.status(400).json({ error: 'No location provided' });
-    const url = `https://www.checkatrade.com/api/v1/search/trades?location=${encodeURIComponent(location)}&trade=gas-engineer&radius=10&page=1&pageSize=20`;
+    const url = `https://search.checkatrade.com/api/v1/trade?q=gas+engineer&location=${encodeURIComponent(location)}&radius=10&page=1&pageSize=20`;
     const r = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': 'application/json, text/plain, */*',
+        'Accept': 'application/json',
+        'Origin': 'https://www.checkatrade.com',
         'Referer': 'https://www.checkatrade.com/'
       }
     });
