@@ -1,9 +1,7 @@
 const express = require('express');
 const fetch = require('node-fetch');
 const app = express();
-
 app.use(express.json());
-
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -11,9 +9,9 @@ app.use((req, res, next) => {
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
 });
-
 const APOLLO_KEY = process.env.APOLLO_API_KEY;
 const CH_KEY = process.env.CH_API_KEY;
+const CLAUDE_KEY = process.env.CLAUDE_API_KEY;
 
 app.post('/apollo/search', async (req, res) => {
   try {
@@ -78,5 +76,12 @@ app.get('/ch/officers/:num', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.get('/health', (req, res) => res.json({ status: 'ok', apollo: APOLLO_KEY ? 'set' : 'missing', ch: CH_KEY ? 'set' : 'missing' }));
-app.listen(process.env.PORT || 3000, () => console.log('NPS proxy running'));
+// Claude proxy — routes Claude API calls through server to work on mobile
+app.post('/claude', async (req, res) => {
+  try {
+    const key = CLAUDE_KEY || req.headers['x-claude-key'];
+    if (!key) return res.status(400).json({ error: 'No Claude API key' });
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+      body: JSON.st
